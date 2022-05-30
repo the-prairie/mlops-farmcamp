@@ -7,7 +7,7 @@ import pandas as pd
 
 
 
-def download_parquet(year_month, taxi_type="green", directory="data/"):
+def download_parquet(year_month: str, taxi_type="green", directory="data"):
     url = f"https://s3.amazonaws.com/nyc-tlc/trip+data/{taxi_type}_tripdata_{year_month}.parquet"
     filename = url.split("/")[-1]
 
@@ -34,5 +34,5 @@ def download_parquet(year_month, taxi_type="green", directory="data/"):
         schema.append(pa.field(col, column_type))
     
     table = table.cast(pa.schema(schema))
-    pq.write_table(table, f"{directory}{filename}")
+    pq.write_table(table, f"{directory}/{taxi_type}/{filename}")
  
