@@ -19,26 +19,26 @@ variable "vpc_azs" {
 variable "vpc_private_subnets" {
   description = "Private subnets for VPC"
   type        = list(string)
-  default     =  ["20.10.1.0/24", "20.10.2.0/24", "20.10.3.0/24"]
+  default     = ["20.10.1.0/24", "20.10.2.0/24"]
 }
 
 variable "vpc_database_subnets" {
   description = "Database subnets for VPC"
   type        = list(string)
-  default     = ["20.10.21.0/24", "20.10.22.0/24", "20.10.23.0/24"]
+  default     = ["20.10.21.0/24", "20.10.22.0/24"]
 }
 
 
 variable "vpc_public_subnets" {
   description = "Public subnets for VPC"
   type        = list(string)
-  default     = ["20.10.11.0/24", "20.10.12.0/24", "20.10.13.0/24"]
+  default     = ["20.10.11.0/24", "20.10.12.0/24"]
 }
 
 variable "vpc_enable_nat_gateway" {
   description = "Enable NAT gateway for VPC"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "vpc_tags" {
@@ -80,5 +80,5 @@ variable "s3_tags" {
 variable "port" {
   description = "Port for PostgreSQL database"
   type        = string
-  default = "5432"
+  default     = "5432"
 }

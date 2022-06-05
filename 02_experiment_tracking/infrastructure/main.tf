@@ -11,14 +11,28 @@ terraform {
 
 provider "aws" {}
 
+locals {
+
+  user_data = <<EOT
+  #!/bin/bash
+  sudo yum update
+  pip3 install mlflow boto3 psycopg2-binary
+
+  EOT
+
+  tags = {
+    Owner       = "mlops"
+    Environment = "dev"
+  }
+}
 
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 3.14.0"
 
-  name = var.vpc_name
-  cidr = var.vpc_cidr
+  name                 = var.vpc_name
+  cidr                 = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -38,35 +52,42 @@ module "vpc" {
   tags = var.vpc_tags
 }
 
+
+
+
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "~> 4.0"
 
   name = "mlops-ec2"
 
-  ami                    = "ami-0843f7c45354d48b5"
-  instance_type          = "t2.micro"
-  key_name               = module.key_pair.key_pair_key_name
-  vpc_security_group_ids = [module.security_group_ec2.security_group_id]
-  subnet_id              = element(module.vpc.private_subnets, 0)
+  ami                         = "ami-0843f7c45354d48b5"
+  instance_type               = "t2.micro"
+  key_name                    = "mlops"
+  vpc_security_group_ids      = [module.security_group_ec2.security_group_id]
+  subnet_id                   = element(module.vpc.public_subnets, 0)
   associate_public_ip_address = true
+
+  user_data_base64            = base64encode(local.user_data)
+  user_data_replace_on_change = true
 
 
   tags = {
     Terraform   = "true"
     Environment = "prod"
+    Name        = "ec2-main-public"
   }
 }
 
-resource "tls_private_key" "this" {
-  algorithm = "RSA"
-}
+# resource "tls_private_key" "this" {
+#   algorithm = "RSA"
+# }
 
-module "key_pair" {
-  source     = "terraform-aws-modules/key-pair/aws"
-  key_name   = "mlops_aws"
-  public_key = tls_private_key.this.public_key_openssh
-}
+# module "key_pair" {
+#   source     = "terraform-aws-modules/key-pair/aws"
+#   key_name   = "mlops"
+#   public_key = ""
+# }
 
 module "security_group_ec2" {
   source  = "terraform-aws-modules/security-group/aws"
@@ -77,7 +98,33 @@ module "security_group_ec2" {
   vpc_id      = module.vpc.vpc_id
 
   ingress_cidr_blocks = ["0.0.0.0/0", module.vpc.vpc_cidr_block]
-  ingress_rules       = ["https-443-tcp", "http-80-tcp", "ssh-tcp","postgresql-tcp"]
+  ingress_rules       = ["https-443-tcp", "http-80-tcp", "ssh-tcp", "postgresql-tcp"]
+
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 5000
+      to_port     = 5000
+      protocol    = "tcp"
+      description = "Accept inbound from mlflow server."
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+  
+  # computed_ingress_with_cidr_blocks = [
+  #   {
+  #     rule        = "https-443-tcp"
+  #     cidr_blocks = "0.0.0.0/0, ${module.vpc.vpc_cidr_block}"
+  #   },
+  #   {
+  #     from_port   = 5000
+  #     to_port     = 5000
+  #     protocol    = 6
+  #     description = "Service name with vpc cidr"
+  #     cidr_blocks = module.vpc.vpc_cidr_block
+  #   }
+  # ]
+  # number_of_computed_ingress_with_cidr_blocks = 2
+
   egress_rules        = ["all-all"]
 
   tags = var.sg_tags
@@ -91,8 +138,22 @@ module "security_group_rds" {
   description = "Security group for usage with RDS instance"
   vpc_id      = module.vpc.vpc_id
 
-  ingress_cidr_blocks = ["0.0.0.0/0", module.vpc.vpc_cidr_block]
+  ingress_cidr_blocks = [module.vpc.vpc_cidr_block]
   ingress_rules       = ["postgresql-tcp"]
+
+  ingress_with_source_security_group_id = [
+    {
+      description              = "Allow access from ec2 security group."
+      rule                     = "postgresql-tcp"
+      source_security_group_id =  module.security_group_ec2.security_group_id
+    },
+    {
+      description              = "Allow ssh access from ec2 security group."
+      rule                     = "ssh-tcp"
+      source_security_group_id =  module.security_group_ec2.security_group_id
+    },
+  ]
+
   egress_rules        = ["all-all"]
 
   tags = var.sg_tags
@@ -120,6 +181,7 @@ module "db" {
   multi_az               = false
   db_subnet_group_name   = module.vpc.database_subnet_group
   vpc_security_group_ids = [module.security_group_rds.security_group_id]
+  publicly_accessible = false
 
   tags = var.rds_tags
 
