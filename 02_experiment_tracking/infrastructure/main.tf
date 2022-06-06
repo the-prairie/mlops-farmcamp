@@ -20,6 +20,15 @@ locals {
 
   EOT
 
+  user_data_prefect = <<EOT
+  #!/bin/bash
+  sudo apt-get update
+  sudo apt update 
+  sudo apt install python3-pip
+  pip3 install virtualenv
+
+  EOT
+
   tags = {
     Owner       = "mlops"
     Environment = "dev"
@@ -53,8 +62,6 @@ module "vpc" {
 }
 
 
-
-
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "~> 4.0"
@@ -79,15 +86,29 @@ module "ec2_instance" {
   }
 }
 
-# resource "tls_private_key" "this" {
-#   algorithm = "RSA"
-# }
+module "ec2_prefect" {
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "~> 4.0"
 
-# module "key_pair" {
-#   source     = "terraform-aws-modules/key-pair/aws"
-#   key_name   = "mlops"
-#   public_key = ""
-# }
+  name = "mlops-ec2-prefect"
+
+  ami                         = "ami-0fb99f22ad0184043"
+  instance_type               = "t2.micro"
+  key_name                    = "mlops"
+  vpc_security_group_ids      = [module.security_group_ec2_prefect.security_group_id]
+  subnet_id                   = element(module.vpc.public_subnets, 0)
+  associate_public_ip_address = true
+
+  user_data_base64            = base64encode(local.user_data_prefect)
+  user_data_replace_on_change = true
+
+
+  tags = {
+    Terraform   = "true"
+    Environment = "prod"
+    Name        = "ec2-prefect-public"
+  }
+}
 
 module "security_group_ec2" {
   source  = "terraform-aws-modules/security-group/aws"
@@ -152,6 +173,32 @@ module "security_group_rds" {
       rule                     = "ssh-tcp"
       source_security_group_id =  module.security_group_ec2.security_group_id
     },
+  ]
+
+  egress_rules        = ["all-all"]
+
+  tags = var.sg_tags
+}
+
+module "security_group_ec2_prefect" {
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 4.0"
+
+  name        = "mlops-ec2-sg-prefect"
+  description = "Security group for usage with EC2 instance for hosting Prefect"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress_cidr_blocks = ["0.0.0.0/0", module.vpc.vpc_cidr_block]
+  ingress_rules       = ["http-80-tcp", "ssh-tcp"]
+
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 4200
+      to_port     = 4200
+      protocol    = "tcp"
+      description = "Accept inbound from Prefect."
+      cidr_blocks = "0.0.0.0/0"
+    }
   ]
 
   egress_rules        = ["all-all"]

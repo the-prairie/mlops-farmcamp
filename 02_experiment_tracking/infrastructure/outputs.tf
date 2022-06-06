@@ -12,6 +12,14 @@ output "ec2_instance_public_dns" {
   value = module.ec2_instance.public_dns
 }
 
+output "ec2_prefect_public_ips" {
+  description = "Public IP addresses of EC2 instance"
+  value       = module.ec2_prefect.public_ip
+}
+
+output "ec2_prefect_public_dns" {
+  value = module.ec2_prefect.public_dns
+}
 
 output "db_username" {
   description = "Username for db"
