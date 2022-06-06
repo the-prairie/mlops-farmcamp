@@ -17,7 +17,7 @@ from sklearn.metrics import mean_squared_error
 _inf = np.finfo(np.float64).max
 
 mlflow.set_experiment("RandomForestHyperopt-GreenTaxi")
-mlflow.set_tracking_uri("http://ec2-15-222-242-133.ca-central-1.compute.amazonaws.com:5000/")
+mlflow.set_tracking_uri("http://ec2-3-96-200-56.ca-central-1.compute.amazonaws.com:5000")
    
 
 def load_pickle(filename):
