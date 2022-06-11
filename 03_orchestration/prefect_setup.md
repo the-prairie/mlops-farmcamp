@@ -31,4 +31,5 @@ source mlops/bin/activate
 
 pip install -U "prefect>=2.0b"
 
-prefect config set PREFECT_ORION_UI_API_URL="http://3.96.197.71:4200/api"
+prefect config set PREFECT_ORION_UI_API_URL="http://35.232.182.113:4200/api"
+prefect config set PREFECT_API_URL="http://35.232.182.113:4200/api"
