@@ -23,7 +23,7 @@ def download_parquet(year_month: str, taxi_type="green", directory="data"):
     filename = url.split("/")[-1].replace("-","_")
     
     if path.joinpath(filename).is_file():
-            print(f"Skipping download as file already exists: {filename}")
+            logger.log(logging.INFO, f"Skipping download as file already exists: {filename}")
     else:
         
         result = requests.get(url)
