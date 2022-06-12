@@ -1,5 +1,10 @@
+from inspect import Parameter
+from numpy import source
 import pandas as pd
 import pickle
+import tempfile
+from google.cloud import storage
+from typing import List
 import requests
 import pyarrow.parquet as pq
 import pyarrow as pa
@@ -49,6 +54,12 @@ def download_parquet(year_month: str, taxi_type="green", directory="data"):
         reader = pa.BufferReader(result.content)
         table = pq.read_table(reader)
         pq.write_table(table, f"{directory}/{filename}")
+        
+@task
+def get_start_date(param_start_date: str) -> str:
+    if param_start_date is None:
+        param_start_date = pd.Timestamp.now().date().strftime('%Y-%m-%d')
+    return param_start_date
 
 
 @task(name="Download parquet data")
@@ -67,6 +78,9 @@ def get_data(date, taxi_type):
     run_date = run_date.replace("-","_")
     train_date = train_date.replace("-","_")
     val_date = val_date.replace("-","_")
+    logger.info(f"Run: {run_date}")
+    logger.info(f"Training: {train_date}")
+    logger.info(f"Validation: {val_date}")
         
     return run_date, train_date, val_date
 
@@ -75,6 +89,7 @@ def read_data(path):
     logger = get_run_logger()
     logger.info(f"Loading {path} into dataframe")
     df = pd.read_parquet(path)
+    df.columns = df.columns.str.upper()
     
     logger.info(f"Dataframe shape: {df.shape}")
     return df
@@ -84,11 +99,11 @@ def prepare_features(df, categorical, train=True):
     logger = get_run_logger()
     logger.info("Calculating trip duration & preparing features")
     
-    df['duration'] = df.dropOff_datetime - df.pickup_datetime
-    df['duration'] = df.duration.dt.total_seconds() / 60
-    df = df.loc[(df.duration >= 1) & (df.duration <= 60), :].copy()
+    df['DURATION'] = df["DROPOFF_DATETIME"]- df["PICKUP_DATETIME"]
+    df['DURATION'] = df["DURATION"].dt.total_seconds() / 60
+    df = df.loc[(df['DURATION'] >= 1) & (df['DURATION'] <= 60), :].copy()
 
-    mean_duration = df.duration.mean()
+    mean_duration = df['DURATION'].mean()
     if train:
         logger.info(f"The mean duration of training is {mean_duration}")
     else:
@@ -105,7 +120,7 @@ def train_model(df, categorical):
     train_dicts = df[categorical].to_dict(orient='records')
     dv = DictVectorizer()
     X_train = dv.fit_transform(train_dicts) 
-    y_train = df.duration.values
+    y_train = df["DURATION"].values
 
     logger.info(f"The shape of X_train is {X_train.shape}")
     logger.info(f"The DictVectorizer has {len(dv.feature_names_)} features")
@@ -126,7 +141,7 @@ def run_model(df, categorical, dv, lr):
     val_dicts = df[categorical].to_dict(orient='records')
     X_val = dv.transform(val_dicts) 
     y_pred = lr.predict(X_val)
-    y_val = df.duration.values
+    y_val = df["DURATION"].values
 
     mse = mean_squared_error(y_val, y_pred, squared=False)
     logger.info(f"The MSE of validation is: {mse}")
@@ -136,19 +151,46 @@ def run_model(df, categorical, dv, lr):
 def get_path(taxi_type, date):
     return f'data/{taxi_type}_tripdata_{date}.parquet'
 
-@flow(task_runner=SequentialTaskRunner(), name="Train For Hire Vehicle High Volume model")
-def main(taxi_type: str = 'fhvhv', 
-         date: str = '2022-03-01' or pd.Timestamp.now().date().strftime('%Y-%m-%d')):
+@task
+def upload_artifacts_gcs(bucket_name: str, run_date: str, taxi_type: str, dv, lr):
+    """Uploads file to gcs bucket
+
+    Args:
+        bucket_name (str): Name of gcs bucket
+        source_files (List): List of path(s) of files to upload from local system
+        destination_blob_name (str): Name of gcs storage object
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        
+        temp_path = pathlib.Path(tmpdir)
+        with open(temp_path.joinpath(f"dv-{run_date}.pkl"), "wb") as f_out:
+            pickle.dump(dv, f_out)
+        with open(temp_path.joinpath(f"model-{run_date}.bin"), "wb") as f_out:
+            pickle.dump(lr, f_out)
+        
+        for file in temp_path.iterdir():
+            blob = bucket.blob(f"{taxi_type}/{file.name}")
+            blob.upload_from_filename(file)
+    
+
+@flow(task_runner=SequentialTaskRunner(), name="train_ride_duration_model")
+def main(taxi_type: str,
+         bucket_name: str,
+         run_date: str):
+    
+    run_date = get_start_date(run_date)
     
     # logger = get_run_logger()
     
-    run_date, train_date, val_date = get_data(date=date, taxi_type=taxi_type).result()
-    # logger.info(f"\n Run:{run_date}\n Training:{train_date}\n Validation:{val_date}")
+    run_date, train_date, val_date = get_data(date=run_date, taxi_type=taxi_type).result()
+    
     
     train_path = get_path(taxi_type, train_date)
     val_path = get_path(taxi_type, val_date)
 
-    categorical = ['PUlocationID', 'DOlocationID']
+    categorical = ['PULOCATIONID', 'DOLOCATIONID']
 
     df_train = read_data(train_path)
     df_train_processed = prepare_features(df_train, categorical)
@@ -160,12 +202,5 @@ def main(taxi_type: str = 'fhvhv',
     lr, dv = train_model(df_train_processed, categorical).result()
     run_model(df_val_processed, categorical, dv, lr)
     
-    # save preprocessor
-    with open(f"models/dv-{run_date}.pkl", "wb") as f_out:
-        pickle.dump(dv, f_out)
-    # save model
-    with open(f"models/model-{run_date}.bin", "wb") as f_out:
-        pickle.dump(lr, f_out)
-
-   
-main(date="2021-08-15", taxi_type="fhv")
+    # save artifacts to GCS
+    upload_artifacts_gcs(bucket_name, run_date, taxi_type, dv, lr)
