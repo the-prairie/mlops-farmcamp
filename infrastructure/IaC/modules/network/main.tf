@@ -39,6 +39,28 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.private_ip_block.name]
 }
 
+resource "google_compute_firewall" "allow-internal" {
+  name    = "${var.project_name}-fw-allow-internal"
+  network = google_compute_network.vpc.name
+  direction = "INGRESS"
+  
+  allow {
+    protocol = "icmp"
+    }
+  allow {
+    protocol = "tcp"
+    ports    = ["0-65535"]
+  }
+  allow {
+    protocol = "udp"
+    ports    = ["0-65535"]
+  }
+
+  source_ranges = [google_compute_subnetwork.private_subnet.ip_cidr_range]
+
+  
+}
+
 
 resource "google_compute_firewall" "allow-http" {
   name    = "${var.project_name}-fw-allow-http"
@@ -47,7 +69,7 @@ resource "google_compute_firewall" "allow-http" {
   
   allow {
     protocol = "tcp"
-    ports    = ["80", "4200"]
+    ports    = ["80", "4200", "4040", "5000"]
     }
 
   source_ranges = ["0.0.0.0/0"]
