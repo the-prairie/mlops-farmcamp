@@ -169,3 +169,5 @@ terraform.rc
 
 
 mlruns/
+
+.parquet
