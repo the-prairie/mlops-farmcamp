@@ -8,8 +8,27 @@ module "artifacts" {
 
 module "db_secret" {
   source       = "./secret_manager"
-  secret_id    = var.db_password_name
+  secret_id    = "db_password_secret"
+  secret_data  = module.database.database_password
 }
+
+module "db_connection_secret" {
+  source       = "./secret_manager"
+  secret_id    = "db_connection_secret"
+  secret_data   = "postgresql://${var.db_username}:${module.db_secret.secret_value}@${module.database.private_ip}:5432/${var.db_name}"
+}
+
+module "service_account" {
+  source     = "./service_account"
+  project_id = var.project_id
+  name = var.service_account_name
+  roles = [
+    "roles/secretmanager.secretAccessor",
+    "roles/cloudsql.client",
+    "roles/cloudsql.instanceUser"
+  ]
+}
+
 
 module "database" {
   source            = "./database"
@@ -20,30 +39,23 @@ module "database" {
   availability_type = var.db_availability_type
   database_name     = var.db_name
   username          = var.db_username
-  password          = module.db_secret.secret_value
   network_self_link = var.network_self_link
+  db_depends_on     = [var.db_depends_on]
+
 }
 
-module "server" {
-  source                       = "./server"
-  mlflow_server                = var.mlflow_server
-  create_default_service       = var.create_default_service
-  location                     = var.server_location
-  docker_image_name            = var.server_docker_image
-  env_variables                = var.server_env_variables
-  db_private_ip                = module.database.private_ip
-  project_id                   = var.project_id
-  db_password_name             = var.db_password_name
-  db_username                  = var.db_username
-  db_name                      = var.db_name
-  db_instance                  = module.database.connection_name
-  gcs_backend                  = module.artifacts.url
-  module_depends_on            = var.module_depends_on
-  consent_screen_support_email = var.consent_screen_support_email
-  web_app_users                = var.web_app_users
-  network_short_name           = var.network_short_name
-  oauth_client_id              = var.oauth_client_id
-  oauth_client_secret          = var.oauth_client_secret
-  create_brand                 = var.create_brand
-  brand_name                   = var.brand_name
+
+module "cloud_run" {
+  
+  source                       = "./cloud_run"
+  name                         = "mlflow-cloud-run"
+  region                       = var.region
+  docker_image                 = var.docker_image
+  db_connection_secret         = module.db_connection_secret.secret_id
+  db_connection_name           = module.database.connection_name
+  oauth2_proxy_config_secret   = var.oauth2_proxy_config_secret
+  artifacts_bucket_name        = module.artifacts.name
+  service_account_name         = module.service_account.service_account_email
+  vpc_connector_name           = var.vpc_connector_name
+  
 }

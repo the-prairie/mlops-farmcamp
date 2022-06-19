@@ -1,7 +1,10 @@
 terraform {
   required_version = "> 0.13.2"
   required_providers {
-    google = "~> 3.13"
+    google = {
+      source  = "hashicorp/google"
+      version = "4.24.0"
+    }
   }
 }
 
@@ -22,7 +25,9 @@ module "services" {
     "sqladmin.googleapis.com",
     "secretmanager.googleapis.com",
     "iap.googleapis.com",
-    "cloudbuild.googleapis.com"
+    "cloudbuild.googleapis.com",
+    "run.googleapis.com",
+    "vpcaccess.googleapis.com"
   ]
 }
 

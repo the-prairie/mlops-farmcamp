@@ -2,6 +2,11 @@ variable "project_id" {
   description = "GCP project"
   type        = string
 }
+variable "region" {
+  type        = string
+  default     = "us-central1"
+  description = "GCP region"
+}
 variable "artifacts_bucket" {
   description = "GCS bucket used to store your artifacts"
   type        = string
@@ -10,14 +15,6 @@ variable "artifacts_bucket" {
 variable "mlflow_docker_image" {
   description = "Docker image used in container registry"
   type        = string
-}
-variable "consent_screen_support_email" {
-  type        = string
-  description = "Person or group to contact in case of problem (address shown in the OAuth consent screen)"
-}
-variable "web_app_users" {
-  type        = list(string)
-  description = "List of people who can acess the mlflow web app. e.g. [user:jane@example.com, group:people@example.com]"
 }
 variable "network_name" {
   type        = string
@@ -33,10 +30,6 @@ variable "mlflow_server" {
   type        = string
   default     = "mlflow"
 }
-variable "create_default_service" {
-  description = "Whether or not to deploy a default AppEngine App"
-  type        = number
-}
 variable "oauth_client_id" {
   type        = string
   description = "Oauth client id, empty if consent screen not set up"
@@ -45,12 +38,13 @@ variable "oauth_client_secret" {
   type        = string
   description = "Oauth client secret, empty if consent screen not set up"
 }
-variable "create_brand" {
-  type        = number
-  description = "1 if the brand needs to be created 0 otherwise"
-}
-variable "brand_name" {
+variable "oauth2_proxy_config_secret" {
   type        = string
-  default     = ""
-  description = "Name of the brand if it exists"
+  description = "Name of secret with oauth2 proxy config saved"
+}
+
+
+variable "service_account_name" {
+  description = "Name of service account to create"
+
 }

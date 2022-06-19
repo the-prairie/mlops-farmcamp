@@ -1,24 +1,58 @@
 
 resource "google_compute_network" "vpc" {
-  name                    = var.name
+  name                    = var.network_name
   auto_create_subnetworks = false
   routing_mode            = "GLOBAL"
+  
 }
 
 
 resource "google_compute_subnetwork" "public_subnet" {
-  name          = "${var.project_name}-public-subnet"
+  name          = "${var.project_id}-public-subnet"
   ip_cidr_range = var.public_subnet
   network       = google_compute_network.vpc.self_link
-  region        = var.region_name
+  region        = var.region
 }
 
 resource "google_compute_subnetwork" "private_subnet" {
-  name          = "${var.project_name}-private-subnet"
+  name          = "${var.project_id}-private-subnet"
   ip_cidr_range = var.private_subnet
   network       = google_compute_network.vpc.self_link
-  region        = var.region_name
+  region        = var.region
 }
+
+# VPC access connector
+resource "google_vpc_access_connector" "connector" {
+  name          = "vpcconn"
+  provider      = google-beta
+  project = var.project_id
+  region        = var.region
+  ip_cidr_range = "10.8.0.0/28"
+  max_throughput= 300
+  network       = google_compute_network.vpc.self_link
+
+}
+
+# Cloud Router
+resource "google_compute_router" "router" {
+  name     = "router"
+  provider = google-beta
+  project  = var.project_id
+  region   = var.region
+  network  = google_compute_network.vpc.self_link
+}
+
+# NAT configuration
+resource "google_compute_router_nat" "router_nat" {
+  name                               = "nat"
+  provider                           = google-beta
+  project                            = var.project_id
+  region                             = var.region
+  router                             = google_compute_router.router.name
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+  nat_ip_allocate_option             = "AUTO_ONLY"
+}
+
 
 
 # We need to allocate an IP block for private IPs. We want everything in the VPC
@@ -39,8 +73,16 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.private_ip_block.name]
 }
 
+resource "null_resource" "dependency_setter" {
+  depends_on = [google_service_networking_connection.private_vpc_connection]
+}
+
+
+
+
+
 resource "google_compute_firewall" "allow-internal" {
-  name    = "${var.project_name}-fw-allow-internal"
+  name    = "${var.project_id}-fw-allow-internal"
   network = google_compute_network.vpc.name
   direction = "INGRESS"
   
@@ -63,13 +105,13 @@ resource "google_compute_firewall" "allow-internal" {
 
 
 resource "google_compute_firewall" "allow-http" {
-  name    = "${var.project_name}-fw-allow-http"
+  name    = "${var.project_id}-fw-allow-http"
   network = google_compute_network.vpc.name
   direction = "INGRESS"
   
   allow {
     protocol = "tcp"
-    ports    = ["80", "4200", "4040", "5000"]
+    ports    = ["80", "4200", "4040", "5000", "4180"]
     }
 
   source_ranges = ["0.0.0.0/0"]
@@ -78,7 +120,7 @@ resource "google_compute_firewall" "allow-http" {
 }
 
 resource "google_compute_firewall" "allow-bastion" {
-  name    = "${var.project_name}-fw-allow-bastion"
+  name    = "${var.project_id}-fw-allow-bastion"
   network = google_compute_network.vpc.name
   direction   = "INGRESS"
   

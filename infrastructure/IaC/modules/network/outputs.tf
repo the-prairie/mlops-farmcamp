@@ -23,3 +23,8 @@ output "private_subnet_name" {
   value       = google_compute_subnetwork.private_subnet.self_link
   description = "The URI of the VPC private subnet"
 }
+
+output "vpc_connector_name" {
+  value = google_vpc_access_connector.connector.name
+  description = "VPC Connector name"
+}

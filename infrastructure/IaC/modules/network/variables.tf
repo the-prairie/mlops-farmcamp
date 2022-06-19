@@ -1,15 +1,16 @@
-variable "name" {
+variable "network_name" {
   description = "Name of the VPC to create"
   type = string
 }
 
-variable "region_name" {
+variable "region" {
   description = "GCP region"
   type = string
+  default = "us-central1"
   
 }
 
-variable "project_name" {
+variable "project_id" {
   description = "GCP project to create VPC in"
   type = string
 }

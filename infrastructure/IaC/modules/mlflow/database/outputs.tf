@@ -12,3 +12,9 @@ output "database_name" {
   description = "The name of the database"
   value       = google_sql_database.main.name
 }
+
+output "database_password" {
+  description = "The name of the database"
+  value       = google_sql_user.db_user.password
+  sensitive = true
+}
