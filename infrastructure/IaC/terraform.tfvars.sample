@@ -1,0 +1,10 @@
+
+# The image with mlflow and oauth2 proxy installed
+mlflow_docker_image        = "gcr.io/<your_project_id>/<your_image_name>:<version>"
+project_id                 = "<your_project_id>"
+oauth_client_id            = "<oauth_client_id>" #e.g <some_prefix>apps.googleusercontent.com
+oauth_client_secret        = "<oauth_client_secret>"
+network_name               = "<vpc_network_name_to_create>"
+# This is the name of the secret that holds the oauth2 proxy configuration
+oauth2_proxy_config_secret = "oauth2_proxy_config"
+service_account_name       = "mlflow"

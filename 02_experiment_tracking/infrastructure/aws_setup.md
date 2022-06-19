@@ -28,3 +28,6 @@ ssh -i ".secrets/mlops.pem" ec2-user@ec2-15-222-242-133.ca-central-1.compute.ama
 
 
 mlflow server -h 0.0.0.0 -p 5000 --backend-store-uri postgresql://postgres:mlflowdb@mlflow-db.cqu5rpwhcjrf.ca-central-1.rds.amazonaws.com:5432/mlflow_db --default-artifact-root s3://mlflow-artifacts-b
+
+
+mlflow server -h 0.0.0.0 -p 5000 --backend-store-uri postgresql://db_admin:mlflowpw@mlflow-rds.cqu5rpwhcjrf.ca-central-1.rds.amazonaws.com:5432/mlflow_db --default-artifact-root s3://mlflow-artifacts-remore

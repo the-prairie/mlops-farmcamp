@@ -47,4 +47,7 @@ Set as global python
 ```shell  
 pyenv global 3.9.8
 ```
+<<<<<<< HEAD
 
+=======
+>>>>>>> 7b011d91e4ce3c620626e0fe14493ce442d545b2
