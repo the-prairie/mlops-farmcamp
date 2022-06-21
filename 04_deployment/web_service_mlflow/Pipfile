@@ -4,13 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-scikit-learn = "==1.1.1"
-flask = "*"
+mlflow = "*"
+sklearn = "*"
+python-dotenv = "*"
 fastapi = "*"
 uvicorn = {extras = ["standard"], version = "*"}
-mlflow = "*"
-plotnine = "*"
-python-dotenv = "*"
 
 [dev-packages]
 
