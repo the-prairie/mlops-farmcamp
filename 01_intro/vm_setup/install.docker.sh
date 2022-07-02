@@ -1,5 +1,5 @@
 
-   # Update the apt package index and install packages to allow apt to use a repository over HTTPS
+# Update the apt package index and install packages to allow apt to use a repository over HTTPS
 sudo apt update
 sudo apt upgrade
 sudo apt install apt-transport-https ca-certificates curl software-properties-common

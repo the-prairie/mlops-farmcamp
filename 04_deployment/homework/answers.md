@@ -17,6 +17,4 @@
 ## Q6: Running script with docker and April 2021. What's the mean predicted duration?
 `9.96`
 
-## Q2: What's the size of the output file?
-`19Mb`
 
