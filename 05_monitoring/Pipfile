@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+mlflow = "*"
+sklearn = "1.0.2"
+python-dotenv = "*"
+fastapi = "*"
+uvicorn = {extras = ["standard"], version = "*"}
+pymongo = "*"
+tqdm = "*"
+pyarrow = "*"
+prefect = ">=2.0b"
+evidently = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"

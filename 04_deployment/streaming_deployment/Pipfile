@@ -42,6 +42,10 @@ mock = "*"
 google-cloud-functions = "*"
 pydantic = "*"
 pytest = "*"
+pandas = "*"
+pyjwt = {extras = ["crypto"], version = "*"}
+fake-useragent = "*"
+duckdb = "*"
 
 [dev-packages]
 
